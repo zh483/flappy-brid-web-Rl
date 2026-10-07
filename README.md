@@ -28,3 +28,14 @@ Flappy Bird 联机项目：C++ 游戏引擎、Crow WebSocket 服务器和网页�
 网页已支持连接、选皮肤、开局、跳跃、多人状态、复活提示和终点进度。强化学习模型尚未实现。
 
 构建产物、虚拟环境、前端依赖和训练输出由 `.gitignore` 排除。
+
+## 下载试玩版本
+
+预编译文件在 [GitHub Releases](https://github.com/zh483/flappy-brid-web-Rl/releases) 下载，源码也可以按上面的说明自行编译。
+
+- **Windows x64 游戏包**：包含服务器程序、网页和 UTF-8 启动脚本。解压后运行 `start-server.cmd` 和 `start-web.cmd`，浏览器打开 `http://localhost:8000`。网页服务需要安装 Node.js，服务器需要 Microsoft Visual C++ x64 运行库。
+- **Python 训练接口包**：适用于 Windows x64、CPython 3.13，包含 `flappy_engine` 模块与调用示例。Linux、其他 Python 版本需要从源码重新编译。此版本尚未包含训练算法或模型。
+- **C++ 引擎 SDK**：包含 MSVC x64 Release 静态库与公共头文件，需使用兼容的编译器和运行库链接。
+
+每个发布包包含使用说明和相关第三方许可证；`SHA256SUMS.txt` 可用于校验下载文件。
+当前是用于学习与联机试玩的单局版本，游戏服务器默认端口为 18080，网页端口为 8000。
