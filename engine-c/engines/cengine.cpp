@@ -7,36 +7,42 @@ std::mt19937 engine::gen{};
 std::vector<pipe*> engine::active_pipes{};
 game_phase engine::_phase=game_phase::idle;
 
-void engine::begin(const game_set& sets,unsigned int seed){//游戏初始化
+std::array<int,8> engine::begin(const game_set& sets,unsigned int seed){//游戏初始化 返回鸟
+    std::array<int, 8> failed_ids;
+    failed_ids.fill(-1);
     if(sets._size<1 || sets._size>config::max_p){
         //写错误日志
         std::cerr << "[engine::begin] Invalid player count: "
             << sets._size
             << ". Expected 1 to " << config::max_p << '\n';
-        return;
+        return failed_ids;
     }
 
     //清理
     clear();
 
+    std::array<int,8>b_is{};
     gen.seed(seed);               
     config::game_speed=std::max(1,sets._speed);  //初始化难度
 
     for(int i=0;i<sets._size;i++){//初始人数
-        if(brids_pool::on_join_in({0,config::world_height/2},sets.character[i])==-1){ //角色可以重叠
+        int b_i=bird_pool::on_join_in({0,config::world_height/2},sets.character[i]);
+        if(b_i==-1){ //角色可以重叠
             //此处写错误日志 TODO
             std::cerr << "[engine::begin] Failed to create player "
                 << i << ": bird pool is full.\n";
 
             clear(); // 清理本次已经创建的玩家
-            return;
+            return failed_ids;
         }
+        b_is[i]=b_i;
     }
     //申请10个管子
     for(int i=0;i<10;i++)
         generate_pipes();
     //开始游戏
     _phase=game_phase::running;
+    return b_is;
 };
 
 void engine::clear(){
@@ -47,8 +53,8 @@ void engine::clear(){
     active_pipes.resize(0);
 
     for(int i=0;i<8;i++){
-        if(brids_pool::pool[i]!=nullptr){
-            brids_pool::on_leave(i);
+        if(bird_pool::pool[i]!=nullptr){
+            bird_pool::on_leave(i);
         }
     }
     _phase=game_phase::idle;
@@ -75,7 +81,7 @@ bool engine::generate_pipes(){
     double n_u=up(gen);
     if(n_u>3*config::world_height/4) n_u=3*config::world_height/4;
     if(n_u<config::world_height/4) n_u=config::world_height/4;
-    auto n_x=x->_x+2*config::p_x;
+    auto n_x=x->_x+config::p_n_x;
 
     if(n_x>config::world_width-2*config::p_x) return false; //超出世界之外
 
@@ -88,7 +94,7 @@ void engine::recycle_pipes(){
     if(active_pipes.empty())return;
     auto pp=active_pipes[0];
     for(int i=0;i<8;i++){
-        auto x=brids_pool::pool[i];
+        auto x=bird_pool::pool[i];
         if(x!=nullptr){//
             if(pp->_x>=x->x_satuation()-config::camera_width/3){ //默认鸟位于1/4 1/3更安全
                 return;
@@ -102,7 +108,7 @@ void engine::recycle_pipes(){
 
 void engine::check_collisions(){
     for(int i=0;i<8;i++){//遍历鸟
-        auto x=brids_pool::pool[i];
+        auto x=bird_pool::pool[i];
         if(x==nullptr || x->_alive!=0 || x->_invin!=0)continue; //死了 和无敌都不检查
 
         if(x->y_satuation() < 0 ||  x->y_satuation()+ config::b_y > config::world_height){
@@ -129,7 +135,7 @@ void engine::check_collisions(){
 
 void engine::update_respawn(){
     for(int i=0;i<8;i++){//遍历鸟
-        auto x=brids_pool::pool[i];
+        auto x=bird_pool::pool[i];
         if(x==nullptr)continue;
         //更新无敌时间
         if(x->_invin!=0){
@@ -157,7 +163,7 @@ void engine::step(const std::array<bool,8>&actions){
 
     double mx_b_x=0; //最低是0
     for(int i=0;i<8;i++){//遍历鸟
-        auto x=brids_pool::pool[i];
+        auto x=bird_pool::pool[i];
         if(x==nullptr) continue;
 
         if(x->_alive==0) x->fly(actions[i]);
@@ -178,7 +184,7 @@ void engine::step(const std::array<bool,8>&actions){
 
     //后更新管道
     while(active_pipes.empty() 
-    || active_pipes[active_pipes.size()-1]->_x<mx_b_x+config::camera_width*1.5)//保守起见
+    || active_pipes[active_pipes.size()-1]->_x<mx_b_x+config::camera_width)//保守起见
     {
        if(!generate_pipes())break;
     }
@@ -190,7 +196,7 @@ void engine::check_finish(){
     if(_phase!=game_phase::running)return;
 
     for(int i=0;i<8;i++){
-        auto x=brids_pool::pool[i];
+        auto x=bird_pool::pool[i];
         if(x!=nullptr && x->_alive==0){//
             if(x->x_satuation()>=config::world_width){
                 _phase=game_phase::finished;
@@ -215,7 +221,7 @@ game_state engine::get_state(){
     }
 
     for(int i=0;i<8;i++){
-        auto otp=brids_pool::pool[i];
+        auto otp=bird_pool::pool[i];
         if(otp==nullptr)continue;
 
         auto& outputs = state.birds[i];
@@ -228,4 +234,8 @@ game_state engine::get_state(){
         outputs.invincible_ms=otp->_invin;
     }
     return state;
+}
+
+void engine::on_leave(int x){
+    bird_pool::on_leave(x);
 }

@@ -14,12 +14,15 @@ struct config
 
     static const double g;
     static const int min_v;
+    static const double max_horizontal_speed; // 最高水平速度，单位：像素/秒
+    static const double max_vertical_speed;
     static const double force;
     static const int max_p;
     static const double v_fps;
     static const double p_df;
     static const double p_x; //pipe的大小
     static const double p_s;
+    static const double p_n_x;
     static const double b_y;
     static const double b_x;
 

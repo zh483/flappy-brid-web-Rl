@@ -1,12 +1,12 @@
 #pragma once
-#include"../objective/brids.hpp"
+#include"../objective/birds.hpp"
 #include"../objective/pipe.hpp"
 #include"../config.hpp"
 #include<random>
 #include<vector>
 
 enum class game_phase{
-      idle,
+    idle,
     running,
     finished
 };
@@ -44,16 +44,17 @@ struct game_state {
 };
 
 
-struct game_state; //游戏状态
 
 class engine{//无实例   
 public:
-    static void begin(const game_set& sets,unsigned int seed=0); //开始游戏
+    static std::array<int,8> begin(const game_set& sets,unsigned int seed=0); //开始游戏
     static void step(const std::array<bool,8>&actions); //就这一个 逻辑
     static game_state get_state(); // 供服务器和 Python 读取
     static bool is_finished();
     static void clear();           // 清空本局，归还活动管道
+    static void on_leave(int);
 
+    static game_phase _phase;
 private:
     static bool generate_pipes();  // 计算位置、洞口，向池申请管道
     static void recycle_pipes();   // 回收所有摄像头后方的管道
@@ -63,8 +64,6 @@ private:
 
     static std::mt19937 gen; // 统一的随机引擎
     static std::vector<pipe*> active_pipes;
-    static game_phase _phase;
-
 };
 
 

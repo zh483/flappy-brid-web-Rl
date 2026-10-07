@@ -1,0 +1,18 @@
+{
+  "crow": {
+    "repository": "CrowCpp/Crow",
+    "tag": "v1.3.4",
+    "release_url": "https://github.com/CrowCpp/Crow/releases/tag/v1.3.4",
+    "archive_url": "https://codeload.github.com/CrowCpp/Crow/zip/refs/tags/v1.3.4",
+    "sha256": "5632649df6adc0a4a3fa58f7a70b7374f7f076996a1ab7656139f549dd93bf52",
+    "directory": "crow"
+  },
+  "asio": {
+    "repository": "chriskohlhoff/asio",
+    "tag": "asio-1-38-2",
+    "release_url": "https://github.com/chriskohlhoff/asio/tree/asio-1-38-2",
+    "archive_url": "https://codeload.github.com/chriskohlhoff/asio/zip/refs/tags/asio-1-38-2",
+    "sha256": "1907e462b736f3b682e1539c6d7a8ececde66dcb25fe98c8386701c101a93388",
+    "directory": "asio"
+  }
+}

@@ -74,8 +74,10 @@ PYBIND11_MODULE(flappy_engine, module) {
     constants.attr("g") = config::g;
     constants.attr("force") = config::force;
     constants.attr("min_v") = config::min_v;
+    constants.attr("max_horizontal_speed") = config::max_horizontal_speed;
     constants.attr("p_x") = config::p_x;
     constants.attr("p_s") = config::p_s;
+    constants.attr("p_n_x") = config::p_n_x;
     constants.attr("p_df") = config::p_df;
     constants.attr("b_x") = config::b_x;
     constants.attr("b_y") = config::b_y;

@@ -67,10 +67,36 @@ class PythonBindingsTest(unittest.TestCase):
             engine.GameSet(characters=[1, 2])
         self.assertEqual(engine.get_state().phase, engine.GamePhase.running)
 
+    def test_large_difficulty_cannot_bypass_speed_limit(self):
+        engine.begin(engine.GameSet(speed=2147483647), seed=3)
+        previous_x = 0
+        for _ in range(8):
+            engine.step([False] * 8)
+            bird = engine.get_state().birds[0]
+            self.assertGreaterEqual(bird.velocity.x, 0)
+            self.assertLessEqual(bird.velocity.x / engine.config.v_fps,
+                                 engine.config.max_horizontal_speed)
+            self.assertLessEqual(bird.position.x - previous_x,
+                                 engine.config.max_horizontal_speed * engine.config.v_fps)
+            previous_x = bird.position.x
+
     def test_finish_freezes_updates_and_new_game_resets(self):
-        engine.begin(engine.GameSet(speed=int(engine.config.world_width)), seed=3)
-        engine.step([False] * 8)
-        engine.step([False] * 8)
+        # 有速度上限后不能用极大难度瞬移终点；通过正常操作跑完有限关卡。
+        engine.begin(engine.GameSet(speed=4), seed=3)
+        max_steps = int(engine.config.world_width /
+                        (engine.config.max_horizontal_speed * engine.config.v_fps)) * 4
+        for _ in range(max_steps):
+            current = engine.get_state()
+            bird = current.birds[0]
+            pipe = next((p for p in current.pipes
+                         if p.x + engine.config.p_x >= bird.position.x), None)
+            target = ((pipe.up + pipe.down - engine.config.b_y) / 2
+                      if pipe else engine.config.world_height / 2)
+            desired_velocity = max(-4.0, min(4.0, (target - bird.position.y) * 0.12))
+            jump = bird.velocity.y - engine.config.g < desired_velocity - engine.config.force / 2
+            engine.step([jump] + [False] * 7)
+            if engine.is_finished():
+                break
         self.assertTrue(engine.is_finished())
         state = engine.get_state()
         self.assertEqual(state.phase, engine.GamePhase.finished)

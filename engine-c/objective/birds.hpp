@@ -6,19 +6,19 @@
 
 class engine;
 
-class brids
+class bird
 {
 //只通过 鸟_pool 创造
-// using BridsAlloc = std::allocator<brids>;
-// using BridsAllocTraits = std::allocator_traits<BridsAlloc>;
+// using BirdAlloc = std::allocator<bird>;
+// using BirdAllocTraits = std::allocator_traits<BirdAlloc>;
 
-friend class brids_pool;
+friend class bird_pool;
 friend class engine;
 
 Vec2 _satuation;
 
 Vec2 _v;
-// BridsAlloc _alloc; 构造器 好像不用
+// BirdAlloc _alloc; 构造器 好像不用
 
 int _character;
 
@@ -26,9 +26,9 @@ double _alive;
 double _invin;
 
 private:
-    brids();
-    brids(Vec2,int); //地点和皮肤
-    ~brids();
+    bird();
+    bird(Vec2,int); //地点和皮肤
+    ~bird();
 
 
 public:
@@ -38,11 +38,11 @@ public:
 };
 
 
-class brids_pool{ //管理所有的鸟
-    brids_pool(){};
-    ~brids_pool(){};
+class bird_pool{ //管理所有的鸟
+    bird_pool(){};
+    ~bird_pool(){};
 public:    
-    static std::array<brids*,8>pool;
+    static std::array<bird*,8>pool;
 
     static int on_join_in(Vec2,int);
     static void on_leave(const int&);

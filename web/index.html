@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f5ed">
+  <meta name="description" content="和朋友一起飞向终点。Flappy Bird 联机练习项目。">
+  <title>Flappy Bird · 一起向前飞</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Flappy Bird 首页">
+        <img src="./favicon.svg" width="40" height="40" alt="">
+        <span>FLAPPY<span class="brand-light">BIRD</span><small>MULTIPLAYER CLUB</small></span>
+      </a>
+      <nav aria-label="页面导航">
+        <a class="nav-current" href="#play"><span>01</span> 联机飞行</a>
+        <a href="#how-to-play"><span>02</span> 怎么玩</a>
+      </nav>
+      <span class="header-tag"><span class="status-dot"></span> 一起飞，更有趣</span>
+    </header>
+
+    <main id="play">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow"><span></span> SMALL BIRDS, BIG ADVENTURE</p>
+          <h1 id="page-title">同一片天空，<span>一起向前。</span></h1>
+          <p class="intro-description">叫上朋友，选一只小鸟。穿过管道，把这段飞行变成你们的故事。</p>
+        </div>
+        <div class="intro-note"><span class="note-star">✳</span><div>最多 8 人同场<small>40,000 的终点，等你抵达</small></div></div>
+      </section>
+
+      <div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
+
+      <div class="play-layout">
+        <section class="game-panel" aria-label="游戏区域">
+          <div class="panel-heading">
+            <div><span class="live-dot" id="game-dot"></span><strong id="game-status">等待起飞</strong><span class="room-caption">SHARED SKY / 01</span></div>
+            <span class="small-label" id="player-count">还没有玩家起飞</span>
+          </div>
+          <div class="stage" id="stage">
+            <canvas id="game-canvas" width="600" height="400" tabindex="0" aria-label="游戏画面，空格、W、向上箭头或点击画面跳跃"></canvas>
+            <div class="stage-topline" aria-hidden="true"><span id="stage-badge">一场新的冒险</span><span id="stage-distance">0 / 40,000</span></div>
+            <div class="stage-overlay" id="stage-overlay">
+              <div class="overlay-content">
+                <span class="overlay-eyebrow" id="overlay-eyebrow">YOUR NEXT LITTLE ADVENTURE</span>
+                <h2 id="overlay-title">准备好，向天空出发。</h2>
+                <p id="overlay-description">先连接服务器，再和朋友一起开始。</p>
+                <button class="button button-dark" id="stage-action" type="button">连接并准备 <span aria-hidden="true">↗</span></button>
+                <span class="overlay-footnote" id="overlay-footnote">每一次点按，都是向上的勇气。</span>
+              </div>
+            </div>
+            <div class="own-bird-label" id="own-bird-label" hidden>描边的小鸟是你</div>
+          </div>
+          <div class="game-toolbar">
+            <div class="keyboard-hint"><kbd>SPACE</kbd><span>或点击画面，向上飞一下</span></div>
+            <button class="button button-jump" id="jump-button" type="button" disabled><span aria-hidden="true">↑</span> 跳一下</button>
+          </div>
+          <div class="route-strip">
+            <span>起点</span><div class="route-track" role="progressbar" aria-label="飞行进度" aria-valuemin="0" aria-valuemax="40000" aria-valuenow="0" id="flight-progress"><span id="progress-fill"></span></div><span>40,000 终点 <span aria-hidden="true">⚑</span></span>
+          </div>
+        </section>
+
+        <aside class="flight-controls" aria-label="连接与开局设置">
+          <section class="control-card connection-card">
+            <div class="card-title"><h2><span class="step-number">01</span> 加入这片天空</h2><span class="connection-badge" id="connection-badge">未连接</span></div>
+            <form id="connection-form">
+              <label for="server-url">服务器地址</label>
+              <div class="input-wrap"><span aria-hidden="true">↗</span><input id="server-url" type="text" inputmode="url" autocomplete="off" spellcheck="false" aria-describedby="connection-help"></div>
+              <button class="button button-connect" id="connect-button" type="submit">连接服务器 <span aria-hidden="true">→</span></button>
+            </form>
+            <p class="field-help" id="connection-help">同一台电脑使用默认地址即可。</p>
+            <div class="identity-line"><span>我的编号</span><strong id="client-number">尚未分配</strong><button class="text-button" id="disconnect-button" type="button" hidden>断开连接</button></div>
+          </section>
+
+          <section class="control-card skin-card">
+            <div class="card-title"><h2><span class="step-number">02</span> 今天，做哪只鸟？</h2><span class="small-label" id="skin-name">柠檬黄</span></div>
+            <div class="skin-grid" id="skin-grid" role="group" aria-label="选择小鸟皮肤"></div>
+            <p class="field-help" id="skin-help">先选好颜色，连接后自动确认。</p>
+          </section>
+
+          <section class="control-card launch-card">
+            <div class="card-title"><h2><span class="step-number">03</span> 一起起飞</h2><span aria-hidden="true">✳</span></div>
+            <div class="difficulty-row"><label for="difficulty">初始难度</label><select id="difficulty"><option value="1">轻松飞 · 1</option><option value="2">加点速 · 2</option><option value="4">挑战一下 · 4</option></select></div>
+            <button class="button button-start" id="start-button" type="button" disabled>开始这场飞行 <span aria-hidden="true">↗</span></button>
+            <p class="field-help">朋友都连接好后再开局。开始后将暂时关闭加入入口。</p>
+          </section>
+        </aside>
+      </div>
+
+      <section class="crew-section" aria-labelledby="crew-title">
+        <div class="section-heading"><div><p class="eyebrow">THE LITTLE FLIGHT CREW</p><h2 id="crew-title">这一路的飞行伙伴</h2></div><span class="small-label" id="crew-caption">开局后显示同场玩家</span></div>
+        <div class="crew-grid" id="crew-grid"></div>
+      </section>
+
+      <section class="how-to-play" id="how-to-play" aria-labelledby="guide-title">
+        <div><p class="eyebrow">A LITTLE FIELD GUIDE</p><h2 id="guide-title">轻轻点一下，<br>剩下的交给勇气。</h2></div>
+        <div class="guide-item"><span class="guide-icon" aria-hidden="true">↑</span><h3>点按，向上飞</h3><p>空格、W、↑，或轻点画面。松开后小鸟会自然下落。</p></div>
+        <div class="guide-item"><span class="guide-icon" aria-hidden="true">Ⅱ</span><h3>找准洞口</h3><p>躲开上下管道和边界。碰撞后等待复活，再继续往前。</p></div>
+        <div class="guide-item"><span class="guide-icon" aria-hidden="true">✧</span><h3>一起抵达远方</h3><p>每个人都有自己的视角；光圈表示复活后的短暂无敌。</p></div>
+      </section>
+
+      <details class="debug-panel"><summary>连接记录 <span id="debug-summary">等待连接</span></summary><ol id="event-log" aria-label="连接与游戏事件记录"></ol></details>
+    </main>
+
+    <footer><span>FLAPPY BIRD <span class="footer-slash">/</span> BUILT ONE LITTLE STEP AT A TIME.</span><span>小步练习，慢慢飞远 <span aria-hidden="true">↗</span></span></footer>
+  </div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "flappy-bird-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node dev-server.js",
+    "test": "node --test tests/*.test.js"
+  }
+}
