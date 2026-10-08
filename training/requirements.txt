@@ -1,0 +1,10 @@
+# Pin algorithm/environment APIs; an existing PyTorch 2.6 can be reused.
+stable-baselines3==2.7.1
+gymnasium==1.2.3
+torch>=2.3,<3
+numpy>=1.24,<3
+tensorboard==2.21.0
+# Keep compatibility when reusing an Anaconda environment with Streamlit.
+protobuf>=6.31.1,<7
+pybind11==3.0.4
+cmake>=3.24

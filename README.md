@@ -13,21 +13,25 @@ Flappy Bird 联机项目：C++ 游戏引擎、Crow WebSocket 服务器和网页�
 - **游戏引擎核心逻辑**：由 **zh483 全程「古法 coding」手写实现**，包括小鸟、管道、对象池、游戏更新、碰撞、复活和终点判定。
 - **服务器业务逻辑**：由 **zh483 编写**，包括连接管理和游戏消息处理。
 - **服务器端的线程同步与互斥锁**：由 **Codex 实现**。
+- **服务器输入校验加固**：由 **Codex 实现**，即 `saver/main.cpp` 中 `read_integer()` 的整数类型与溢出检查。
 - **网页前端**：由 **Codex 实现**，包括页面样式、WebSocket 客户端、Canvas 绘图和交互。
 - **工程辅助**：Codex 协助完成 CMake 配置、pybind11 绑定、测试、代码检查与参数调整。
+- **Python 强化学习训练**：Codex 实现 Gymnasium 环境封装，以及调用 Stable-Baselines3 PPO 的训练、评估、保存和续训流程。
 
 ## 目录
 
 - `engine-c/`：C++ 引擎、CMake 构建、Python 绑定与测试。
 - `saver/`：单局 WebSocket 服务器、消息协议与联机测试。
 - `web/`：原生 HTML/CSS/JavaScript 网页前端，Canvas 绘图。
-- `traing/`：Python 训练代码，待实现。
+- `training/`：Gymnasium 环境、Stable-Baselines3 PPO 训练、评估与续训。
 
-构建与调用方法见 [引擎说明](engine-c/README.md)、[服务器说明](saver/README.md) 和 [网页说明](web/README.md)。
+构建与调用方法见 [引擎说明](engine-c/README.md)、[服务器说明](saver/README.md)、[网页说明](web/README.md) 和 [训练说明](training/README.md)。
 服务器已实现玩家连接管理、皮肤选择、固定步长更新和状态广播。
-网页已支持连接、选皮肤、开局、跳跃、多人状态、复活提示和终点进度。强化学习模型尚未实现。
+网页已支持连接、选皮肤、开局、跳跃、多人状态、复活提示和终点进度。Python 已支持 PPO 训练流程，模型效果仍需正式训练与评估。
 
 构建产物、虚拟环境、前端依赖和训练输出由 `.gitignore` 排除。
+
+各文件的手写与生成分工见 [开发分工说明](DEVELOPMENT.md)。
 
 ## 下载试玩版本
 

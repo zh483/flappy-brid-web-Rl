@@ -63,7 +63,7 @@ private:
     static void check_finish();
 
     static std::mt19937 gen; // 统一的随机引擎
-    static std::vector<pipe*> active_pipes;
+    static std::vector<Pipe*> active_pipes;
 };
 
 

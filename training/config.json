@@ -1,0 +1,35 @@
+{
+  "env": {
+    "initial_speed": 1,
+    "skin": 0,
+    "max_episode_steps": 30000,
+    "progress_reward": 0.1,
+    "pipe_reward": 1.0,
+    "crash_reward": -1.0,
+    "finish_reward": 10.0
+  },
+  "ppo": {
+    "learning_rate": 0.0003,
+    "n_steps": 1024,
+    "batch_size": 256,
+    "n_epochs": 10,
+    "gamma": 0.995,
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "ent_coef": 0.01,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+    "target_kl": 0.03,
+    "policy_kwargs": {"net_arch": [64, 64]}
+  },
+  "run": {
+    "total_timesteps": 1000000,
+    "n_envs": 4,
+    "seed": 42,
+    "device": "cpu",
+    "torch_threads": 1,
+    "eval_freq": 20000,
+    "eval_episodes": 5,
+    "checkpoint_freq": 20000
+  }
+}

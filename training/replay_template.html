@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Flappy Bird · PPO 模型评估与回放</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#fafafa;--fg:#23272e;--muted:#636b76;--line:#d9dee5;--surface:#edf1f5;--accent:#2767b1;--good:#268060;--bad:#b54343;--bird:#d48b21}
+    @media(prefers-color-scheme:dark){:root{--bg:#171b21;--fg:#e6e9ee;--muted:#b0b7c1;--line:#3c4654;--surface:#252d38;--accent:#84b7ee;--good:#6fc9a4;--bad:#f28c8c;--bird:#e6b261}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.65 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1180px;margin:auto;padding:28px 22px 50px}h1{font-size:24px;margin:0 0 6px}h2{font-size:18px;margin:26px 0 12px}p{margin:6px 0;color:var(--muted)}.metrics,.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}.metric{padding:14px 0;border-bottom:1px solid var(--line)}.value{font-size:30px;font-weight:650;color:var(--accent)}.detail{color:var(--muted)}.controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:14px 0}button,select{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:7px 12px}button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}label{display:inline-flex;align-items:center;gap:7px}input[type=range]{width:100%;accent-color:var(--accent)}.player h3{font-size:16px;margin:0 0 8px}.player canvas{display:block;width:100%;aspect-ratio:3/2;border:1px solid var(--line)}.status{display:flex;flex-wrap:wrap;gap:12px;margin-top:6px;font-variant-numeric:tabular-nums}.good{color:var(--good)}.bad{color:var(--bad)}.table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}th:first-child,td:first-child{text-align:left}summary{cursor:pointer;font-weight:600;margin:22px 0 10px}code{overflow-wrap:anywhere;font-size:13px}#timing{font-variant-numeric:tabular-nums}.source{font-size:13px;margin-top:12px}footer{margin-top:30px;border-top:1px solid var(--line);padding-top:12px;color:var(--muted);font-size:13px}
+  </style>
+</head>
+<body>
+<main>
+  <h1>PPO 模型评估与回放</h1>
+  <p id="load-status" role="status">正在载入回放数据……</p>
+  <noscript><p>此回放需要 JavaScript。请使用允许运行 JavaScript 的浏览器打开生成的回放文件。</p></noscript>
+  <p id="scope"></p>
+  <section id="metrics" class="metrics" aria-label="模型评估汇总"></section>
+  <p id="finding"></p>
+  <h2>代表关卡回放</h2>
+  <p id="replay-description"></p>
+  <div class="controls">
+    <button id="play" type="button">播放</button>
+    <button id="restart" type="button">回到起点</button>
+    <label>关卡种子 <select id="seed" aria-label="关卡种子"></select></label>
+    <label>播放速度 <select id="speed"><option value="1">1 倍</option><option value="4">4 倍</option><option value="8">8 倍</option><option value="16" selected>16 倍</option></select></label>
+    <span id="timing"></span>
+  </div>
+  <input id="seek" type="range" min="0" max="1" value="0" step="1" aria-label="回放逻辑步">
+  <section id="players" class="players" aria-label="两个模型的游戏回放"></section>
+  <details id="details">
+    <summary>逐局评估结果</summary>
+    <div class="table-wrap"><table id="episodes"></table></div>
+  </details>
+  <footer id="source"></footer>
+</main>
+<script id="replay-data" type="application/json">__REPLAY_DATA__</script>
+<script>
+"use strict";
+(() => {
+const loadStatus = document.getElementById("load-status");
+function showError(message) {
+  loadStatus.hidden = false;
+  loadStatus.className = "bad";
+  loadStatus.textContent = message;
+}
+window.addEventListener("error", event => showError(`回放加载失败：${event.message}`));
+try {
+const raw = document.getElementById("replay-data").textContent.trim();
+if (!raw.startsWith("{")) {
+  showError("你打开的是回放模板，没有模型轨迹。请打开训练结果目录中的 comparison-replay.html，或 training.replay 命令生成的其他 HTML 文件。");
+  document.getElementById("play").disabled = true;
+  return;
+}
+const data = JSON.parse(raw);
+const c = data.engine_config;
+const byId = id => document.getElementById(id);
+const format = (number, decimals = 0) => number.toLocaleString("zh-CN", {maximumFractionDigits:decimals});
+const metrics = byId("metrics");
+const firstReport = data.models[0].evaluation;
+byId("scope").textContent = firstReport ? `相同 ${firstReport.episodes.length} 个新种子 · 确定性动作 · 本地引擎参数与训练记录一致` : "PPO 确定性动作 · 真实引擎轨迹";
+data.models.forEach(model => {
+  const item = document.createElement("div"); item.className = "metric";
+  const title = document.createElement("strong"); title.textContent = model.label; item.append(title);
+  const value = document.createElement("div"); value.className = "value";
+  const report = model.evaluation;
+  value.textContent = report ? `${report.episodes.filter(e => e.is_success).length} / ${report.episodes.length} 局通关` : `${format(model.timesteps)} 训练步`;
+  item.append(value);
+  const detail = document.createElement("div"); detail.className = "detail";
+  detail.textContent = `训练检查点：${format(model.timesteps)} 步` + (report ? ` · 平均过管 ${format(report.mean_pipes_passed, 2)} · 平均距离 ${format(report.mean_distance, 1)}px` : ""); item.append(detail); metrics.append(item);
+});
+if (data.models.length === 2 && data.models.every(m => m.evaluation)) {
+  const difference = data.models[0].evaluation.success_rate - data.models[1].evaluation.success_rate;
+  byId("finding").textContent = `${data.models[0].label}在这批关卡中的通关率比${data.models[1].label}${difference >= 0 ? "高" : "低"} ${Math.abs(difference * 100).toFixed(0)} 个百分点。这 ${firstReport.episodes.length} 局结果仍需在更多种子上验证。`;
+}
+byId("replay-description").textContent = (data.models.length === 2 ? "两个模型使用相同关卡种子。" : "") + "轨迹由 C++ 引擎计算；页面播放已记录的位置。";
+data.seeds.forEach((seed, index) => { const option = document.createElement("option"); option.value = index; option.textContent = seed; byId("seed").append(option); });
+const views = data.models.map((model, index) => {
+  const player = document.createElement("article"); player.className = "player";
+  const title = document.createElement("h3"); title.textContent = model.label; player.append(title);
+  const canvas = document.createElement("canvas"); canvas.width = 900; canvas.height = 600; canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", `${model.label}的小鸟与管道轨迹`); player.append(canvas);
+  const status = document.createElement("div"); status.className = "status";
+  const distance = document.createElement("span"), pipes = document.createElement("span"), outcome = document.createElement("strong"); status.append(distance, pipes, outcome); player.append(status); byId("players").append(player);
+  return {canvas, distance, pipes, outcome, index};
+});
+if (firstReport) {
+  const table = byId("episodes"), header = table.createTHead().insertRow();
+  ["关卡种子", ...data.models.flatMap(m => [`${m.label}距离（px）`, `${m.label}结果`])].forEach(text => { const th = document.createElement("th"); th.textContent = text; th.scope = "col"; header.append(th); });
+  const body = table.createTBody();
+  firstReport.episodes.forEach((episode, index) => {
+    const row = body.insertRow(); row.insertCell().textContent = episode.reset_seed;
+    data.models.forEach(model => { const item = model.evaluation.episodes[index]; row.insertCell().textContent = format(item.distance); const outcome = row.insertCell(); outcome.textContent = item.is_success ? "通关" : "碰撞"; outcome.className = item.is_success ? "good" : "bad"; });
+  });
+} else { byId("details").hidden = true; }
+byId("source").textContent = `来源：training.evaluate 独立评估报告与 training.replay 轨迹；回放种子 ${data.seeds.join("、")}；逻辑步长 ${c.v_fps.toFixed(5)} 秒，每 ${data.frame_stride} 步记录一帧。终止后画面停留在最后一帧。`;
+let selected = 0, step = 0, playing = false, lastTime = null;
+function episode(index) { return data.replays[index][selected]; }
+function maxStep() { return Math.max(...data.models.map((_, index) => episode(index).result.engine_steps)); }
+function reset() { step = 0; playing = false; lastTime = null; byId("seek").max = maxStep(); byId("seek").value = 0; byId("play").textContent = "播放"; draw(); }
+function currentFrame(replay) {
+  const frames = replay.frames; let low = 0, high = frames.length - 1;
+  while (low < high) { const middle = Math.ceil((low + high) / 2); if (frames[middle][0] <= step) low = middle; else high = middle - 1; }
+  const before = frames[low], after = frames[Math.min(low + 1, frames.length - 1)];
+  const amount = after[0] === before[0] ? 0 : Math.min(1, Math.max(0, (step - before[0]) / (after[0] - before[0])));
+  return {x:before[1] + (after[1] - before[1]) * amount, y:before[2] + (after[2] - before[2]) * amount, pipes:before[5]};
+}
+function draw() {
+  const style = getComputedStyle(document.documentElement), color = key => style.getPropertyValue(key).trim();
+  views.forEach(view => {
+    const replay = episode(view.index), frame = currentFrame(replay), ctx = view.canvas.getContext("2d");
+    ctx.setTransform(view.canvas.width / c.camera_width, 0, 0, view.canvas.height / c.camera_height, 0, 0);
+    ctx.fillStyle = color("--bg"); ctx.fillRect(0, 0, c.camera_width, c.camera_height);
+    const camera = Math.max(0, frame.x - c.camera_width * 0.25);
+    ctx.fillStyle = color("--good");
+    replay.pipes.forEach(pipe => { const x = pipe[0] - camera; if (x + c.p_x < 0 || x > c.camera_width) return; ctx.fillRect(x, 0, c.p_x, c.world_height - pipe[1]); ctx.fillRect(x, c.world_height - pipe[2], c.p_x, pipe[2]); });
+    const endX = c.world_width - camera;
+    if (endX >= 0 && endX <= c.camera_width) { ctx.strokeStyle = color("--accent"); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(endX, 0); ctx.lineTo(endX, c.world_height); ctx.stroke(); ctx.fillStyle = color("--fg"); ctx.font = "14px sans-serif"; ctx.fillText("终点", endX - 35, 22); }
+    const ended = step >= replay.result.engine_steps;
+    ctx.fillStyle = color(ended && replay.result.crashed ? "--bad" : "--bird"); ctx.fillRect(frame.x - camera, c.world_height - frame.y - c.b_y, c.b_x, c.b_y);
+    ctx.fillStyle = color("--fg"); ctx.fillRect(frame.x - camera + c.b_x - 7, c.world_height - frame.y - c.b_y + 4, 3, 3);
+    view.distance.textContent = `距离 ${format(frame.x)}px`; view.pipes.textContent = `过管 ${frame.pipes}`;
+    view.outcome.textContent = ended ? (replay.result.is_success ? "已通关" : replay.result.crashed ? "已碰撞" : "时间上限") : "飞行中";
+    view.outcome.className = ended ? (replay.result.is_success ? "good" : "bad") : "";
+  });
+  byId("seek").value = Math.floor(step); byId("timing").textContent = `${format(step)} / ${format(maxStep())} 逻辑步`;
+}
+byId("play").addEventListener("click", () => { if (step >= maxStep()) step = 0; playing = !playing; lastTime = null; byId("play").textContent = playing ? "暂停" : "播放"; draw(); });
+byId("restart").addEventListener("click", reset);
+byId("seed").addEventListener("change", () => { selected = Number(byId("seed").value); reset(); });
+byId("seek").addEventListener("input", () => { step = Number(byId("seek").value); lastTime = null; draw(); });
+function animate(now) { if (playing && lastTime !== null) { step = Math.min(maxStep(), step + Math.min(0.1, (now - lastTime) / 1000) / c.v_fps * Number(byId("speed").value)); draw(); if (step >= maxStep()) { playing = false; byId("play").textContent = "播放"; } } lastTime = now; requestAnimationFrame(animate); }
+reset(); requestAnimationFrame(animate);
+loadStatus.hidden = true;
+} catch (error) {
+  showError(`回放加载失败：${error.message}`);
+}
+})();
+</script>
+</body>
+</html>

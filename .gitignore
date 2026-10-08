@@ -52,6 +52,8 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Training output (keep source code and configuration)
+/training-cloud.zip
+/ppo-result-*.zip
 checkpoints/
 runs/
 wandb/

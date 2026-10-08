@@ -4,7 +4,7 @@
 #include<algorithm>
 
 std::mt19937 engine::gen{}; 
-std::vector<pipe*> engine::active_pipes{};
+std::vector<Pipe*> engine::active_pipes{};
 game_phase engine::_phase=game_phase::idle;
 
 std::array<int,8> engine::begin(const game_set& sets,unsigned int seed){//游戏初始化 返回鸟
@@ -116,7 +116,7 @@ void engine::check_collisions(){
             continue;
         }
 
-        auto at=[x](const pipe* p){
+        auto at=[x](const Pipe* p){
            bool overlap_x =
                 x->x_satuation() + config::b_x >= p->_x &&
                 x->x_satuation() <= p->_x + config::p_x;

@@ -2,7 +2,8 @@
 
 #include<vector>
 
-class pipe{
+// Avoid the POSIX pipe() function name when included after Python system headers.
+class Pipe{
     //只通过对象池创建
 
 friend class pipe_pool; //友元类
@@ -14,8 +15,8 @@ double _down;// 下洞口
 double _x; //世界位置
 
 private:
-    pipe(double,double,double);
-    ~pipe();
+    Pipe(double,double,double);
+    ~Pipe();
 
     void react(double,double,double); //重置自己
 public:
@@ -24,7 +25,7 @@ public:
 
 class pipe_pool{//对象池 无实例
     //存指针
-    static std::vector<pipe*>pool;
+    static std::vector<Pipe*>pool;
 
 private:
     pipe_pool();
@@ -32,7 +33,7 @@ private:
 
 
 public:
-    static pipe* acquire(double,double,double); //h.s.x
-    static void release(pipe*);
+    static Pipe* acquire(double,double,double); //h.s.x
+    static void release(Pipe*);
 };
 
