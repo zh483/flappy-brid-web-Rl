@@ -125,7 +125,7 @@ class ServerTest(unittest.TestCase):
             self.port = probe.getsockname()[1]
         self.log = tempfile.TemporaryFile()
         self.process = subprocess.Popen(
-            [str(SERVER), str(self.port)], stdout=self.log, stderr=self.log,
+            [str(SERVER), str(self.port), *getattr(self, "server_args", [])], stdout=self.log, stderr=self.log,
             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
         )
         self.addCleanup(self.stop_server)

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "observation_version": 1,
+  "engine_config": {
+    "camera_width": 600.0,
+    "camera_height": 400.0,
+    "world_width": 40000.0,
+    "world_height": 400.0,
+    "max_p": 8,
+    "v_fps": 0.041666666666666664,
+    "g": 0.98,
+    "force": 9.8,
+    "min_v": 2,
+    "max_horizontal_speed": 120.0,
+    "max_vertical_speed": 120.0,
+    "p_x": 50.0,
+    "p_s": 80.0,
+    "p_n_x": 200.0,
+    "p_df": 20.0,
+    "b_x": 25.0,
+    "b_y": 20.0,
+    "alive_ms": 3000.0,
+    "invin_ms": 1000.0
+  },
+  "training_steps": 400000,
+  "source_model_sha256": "652867b4533c2bfe62082abed19e2d4dd033df8116dd00dde140acfd27b53ce2",
+  "onnx_sha256": "200f5b4b5453488dc98ce2c2fc53240aef8d78f4a8296b5ae80d0104e140269a",
+  "observation_order": [
+    "y",
+    "vy",
+    "vx",
+    "pipe_dx",
+    "gap_down",
+    "gap_up",
+    "x",
+    "has_pipe"
+  ],
+  "actions": {
+    "0": "no_jump",
+    "1": "jump"
+  },
+  "parity_cases": 512
+}

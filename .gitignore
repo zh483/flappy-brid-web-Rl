@@ -62,6 +62,7 @@ tensorboard/
 *.pth
 *.ckpt
 *.onnx
+!/saver/models/ppo-bird.onnx
 
 # Local credentials and machine-specific files
 .env

@@ -1,5 +1,6 @@
 #include "crow.h"
 #include "engines/cengine.hpp"
+#include "bot_policy.hpp"
 
 #include <array>
 #include <string>
@@ -12,6 +13,8 @@
 #include <mutex>
 #include <charconv>
 #include <iostream>
+#include <memory>
+#include <filesystem>
 
 using game_clock = std::chrono::steady_clock;
 
@@ -30,6 +33,9 @@ struct server_state {
     game_clock::time_point last_update = game_clock::now();
     double accumulated_seconds = 0.0;
     std::uint64_t tick = 0;
+    BotPolicy* bot_policy = nullptr;
+    int configured_bots = 0;
+    std::array<bool, 8> bot_birds{};
 };
 
 void send_error(crow::websocket::connection& conn, const std::string& error) {
@@ -97,6 +103,7 @@ void handle_close(server_state& server, crow::websocket::connection& conn) {
     if (server.client_numb == 0) {
         reset_game_clock(server);
         engine::clear();
+        server.bot_birds.fill(false);
     }
 }
 
@@ -180,12 +187,22 @@ void handle_game_begin(server_state& server,
         return;
 
     game_set settings{};
-    settings._size = server.client_numb;
+    const int bots = server.configured_bots;
+    if (server.client_numb + bots > 8) {
+        send_error(conn, "真人与机器人合计不能超过 8 只鸟");
+        return;
+    }
+    if (bots > 0 && !server.bot_policy) {
+        send_error(conn, "机器人模型未加载");
+        return;
+    }
+    settings._size = server.client_numb + bots;
     settings._speed = speed;
 
     int i = 0;
     for (const auto& connection : server.connections)
         settings.character[i++] = connection.second.skin;
+    for (int b = 0; b < bots; ++b) settings.character[i + b] = (b + 4) % 6;
 
     const auto bird_ids = engine::begin(settings);
     if (bird_ids[0] < 0) {
@@ -194,6 +211,9 @@ void handle_game_begin(server_state& server,
     }
 
     reset_game_clock(server);
+    server.bot_birds.fill(false);
+    for (int b = server.client_numb; b < settings._size; ++b)
+        server.bot_birds[bird_ids[b]] = true;
     // 两次遍历之间没有修改 connections，顺序一致。
     i = 0;
     for (auto& connection : server.connections){
@@ -337,6 +357,8 @@ void broadcast_state(const server_state& server, const game_state& state) {
     message["speed"] = state.speed;
     message["pipes"] = pipes_to_json(state.pipes);
     message["birds"] = birds_to_json(state.birds);
+    for (unsigned i = 0; i < 8; ++i)
+        message["birds"][i]["is_bot"] = server.bot_birds[i];
 
     for (const auto& connection : server.connections) {
         crow::json::wvalue client_message(message);
@@ -371,8 +393,24 @@ void update_server(server_state& server) {
     while (server.accumulated_seconds >= step_seconds &&
            steps < 8 &&
            engine::_phase == game_phase::running) {
-        const auto actions = server.pending_jump;
+        auto actions = server.pending_jump;
         server.pending_jump.fill(false);
+        if (server.bot_policy) {
+            const auto snapshot = engine::get_state();
+            for (int i = 0; i < 8; ++i) {
+                if (!server.bot_birds[i]) continue;
+                try {
+                    actions[i] = server.bot_policy->jump(snapshot, i);
+                } catch (const std::exception& error) {
+                    // Stop only this bot; a bad model must not terminate the server.
+                    CROW_LOG_ERROR << "机器人推理失败: " << error.what();
+                    server.bot_birds[i] = false;
+                    engine::on_leave(i);
+                    for (const auto& entry : server.connections)
+                        send_error(*entry.first, "机器人推理失败，该机器人已退出");
+                }
+            }
+        }
 
         engine::step(actions);
 
@@ -394,21 +432,37 @@ void update_server(server_state& server) {
 int main(int argc, char* argv[]) {
     // 默认端口不变，测试时可传入独立端口，避免占用正在运行的服务器。
     int port = 18080;
-    if (argc > 2) {
-        std::cerr << "Usage: flappy_server [port]\n";
-        return 1;
-    }
-    if (argc == 2) {
-        const std::string text = argv[1];
-        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), port);
-        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
-            port < 1 || port > 65535) {
-            std::cerr << "Port must be between 1 and 65535\n";
-            return 1;
+    int bots = 0;
+    auto model = std::filesystem::absolute(argv[0]).parent_path() / "models/ppo-bird.onnx";
+    bool port_given = false;
+    for (int index = 1; index < argc; ++index) {
+        const std::string option = argv[index];
+        if (option == "--model" && index + 1 < argc) { model = argv[++index]; continue; }
+        const bool bot_option = option == "--bots";
+        if ((bot_option && index + 1 == argc) || (!bot_option && port_given)) {
+            std::cerr << "Usage: flappy_server [port] [--bots 0..1] [--model path]\n"; return 1;
         }
+        const std::string text = bot_option ? argv[++index] : option;
+        int value = 0;
+        const auto parsed = std::from_chars(text.data(), text.data() + text.size(), value);
+        if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
+            value < (bot_option ? 0 : 1) || value > (bot_option ? 1 : 65535)) {
+            std::cerr << "Invalid port or bot count\n"; return 1;
+        }
+        if (bot_option) bots = value;
+        else { port = value; port_given = true; }
     }
     crow::SimpleApp app;
     server_state server;
+    std::unique_ptr<BotPolicy> bot_policy;
+    try {
+        bot_policy = std::make_unique<BotPolicy>(model);
+        server.bot_policy = bot_policy.get();
+    } catch (const std::exception& error) {
+        CROW_LOG_WARNING << "机器人不可用: " << error.what();
+        if (bots > 0) return 1;
+    }
+    server.configured_bots = bots;
     std::mutex server_mutex;
 
     CROW_WEBSOCKET_ROUTE(app, "/ws")
