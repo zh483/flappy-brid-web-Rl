@@ -54,6 +54,15 @@ void reset_game_clock(server_state& server) {
 
 void broadcast_state(const server_state& server, const game_state& state);
 
+void broadcast_lobby(const server_state& server) {
+    crow::json::wvalue message;
+    message["type"] = "lobby";
+    message["player_count"] = server.client_numb;
+    message["bot_available"] = server.bot_policy != nullptr;
+    message["default_bots"] = server.configured_bots;
+    for (const auto& entry : server.connections) entry.first->send_text(message.dump());
+}
+
 bool handle_accept(const server_state& server) {
     return server.client_numb < 8 && engine::_phase != game_phase::running;
 }
@@ -75,6 +84,7 @@ void handle_open(server_state& server, crow::websocket::connection& conn) {
         message["type"] = "connected";
         message["client_id"] = i;
         conn.send_text(message.dump());
+        broadcast_lobby(server);
         CROW_LOG_INFO << "玩家 " << i << " 连接上了";
         return;
     }
@@ -105,6 +115,7 @@ void handle_close(server_state& server, crow::websocket::connection& conn) {
         engine::clear();
         server.bot_birds.fill(false);
     }
+    broadcast_lobby(server);
 }
 
 //阅读数字字段

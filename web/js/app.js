@@ -1,5 +1,5 @@
 import { SKINS, WORLD, birdIcon, clamp, getSkin } from "./config.js";
-import { applyServerMessage, canJump, createInitialState, ownBird } from "./protocol.js";
+import { applyServerMessage, botCapacity, canJump, createInitialState, gameBeginMessage, ownBird } from "./protocol.js";
 import { GameConnection } from "./network.js";
 import { GameRenderer } from "./renderer.js";
 
@@ -14,6 +14,7 @@ let selectedSkin = 0;
 let confirmedSkin = 0;
 let skinPending = false;
 let startPending = false;
+let botSelectionInitialized = false;
 
 function remember(key, value) {
   try { localStorage.setItem(key, value); } catch { /* 禁用存储时仍然可以玩。 */ }
@@ -45,6 +46,8 @@ function resetSession() {
   state = createInitialState();
   skinPending = false;
   startPending = false;
+  botSelectionInitialized = false;
+  element("bot-count").value = "0";
   renderer.reset();
 }
 
@@ -86,6 +89,12 @@ function handleMessage(message) {
       remember("flappy.skin", selectedSkin);
       logEvent(`皮肤已确认：${getSkin(selectedSkin).name}。`);
       break;
+    case "lobby":
+      if (!botSelectionInitialized) {
+        element("bot-count").value = String(Math.min(state.defaultBots, botCapacity(state)));
+        botSelectionInitialized = true;
+      }
+      break;
     case "game_started":
       renderer.reset();
       startPending = false;
@@ -93,7 +102,7 @@ function handleMessage(message) {
       selectedSkin = getSkin(message.skin_id).id;
       confirmedSkin = selectedSkin;
       notice();
-      logEvent(`开始飞行，你的小鸟编号是 B${pad(state.birdId)}。`);
+      logEvent(`开始飞行，你的小鸟编号是 B${pad(state.birdId)}，本局有 ${message.bot_count ?? 0} 只 AI。`);
       canvas.focus({ preventScroll: true });
       break;
     case "game_state":
@@ -154,8 +163,9 @@ const crewSlots = Array.from({ length: 8 }, () => {
 function updateCrew() {
   const birds = state.snapshot?.birds;
   const count = birds?.filter((bird) => bird.present).length ?? 0;
-  element("player-count").textContent = birds ? `${count} 只小鸟同场` : state.connected ? "你已连接 · 等待开局" : "还没有玩家起飞";
-  element("crew-caption").textContent = birds ? "描边卡片是你 · B 为小鸟编号" : "开局后显示同场玩家";
+  const botCount = birds?.filter((bird) => bird.present && bird.is_bot).length ?? 0;
+  element("player-count").textContent = birds ? `${count - botCount} 位玩家 + ${botCount} 只 AI` : state.connected ? `${state.playerCount ?? 1} 位玩家已连接` : "还没有玩家起飞";
+  element("crew-caption").textContent = birds ? "描边卡片是你 · AI 为机器人" : "开局后显示玩家与 AI";
   crewSlots.forEach((view, index) => {
     const bird = birds?.[index];
     // 开局前服务器没有广播全体名单，只显示已确认的自己，不猜测人数。
@@ -169,7 +179,7 @@ function updateCrew() {
       view.icon.innerHTML = skin === null ? "+" : birdIcon(skin);
       view.skin = skin;
     } else if (skin === null) view.icon.textContent = "+";
-    view.name.textContent = present ? `${lobbySelf ? `P${pad(state.clientId)}` : `B${pad(index)}`}${own ? " · 你" : ""}` : "空位";
+    view.name.textContent = present ? `${bird?.is_bot ? "AI · " : ""}${lobbySelf ? `P${pad(state.clientId)}` : `B${pad(index)}`}${own ? " · 你" : ""}` : "空位";
     view.status.textContent = lobbySelf ? "已连接" : !present ? "等待伙伴" : bird.respawn_ms > 0 ? "等待复活" : bird.invincible_ms > 0 ? "短暂无敌" : state.phase === "finished" ? "本局结束" : "飞行中";
   });
 }
@@ -198,6 +208,16 @@ function updateUI() {
     button.disabled = running || skinPending || startPending;
   });
   element("difficulty").disabled = running || startPending;
+  const botLimit = botCapacity(state);
+  const botSelect = element("bot-count");
+  for (const option of botSelect.options) option.disabled = Number(option.value) > botLimit;
+  if (Number(botSelect.value) > botLimit) botSelect.value = String(botLimit);
+  botSelect.disabled = !mayStart || !state.botAvailable || botLimit === 0;
+  element("bot-help").textContent = !state.connected ? "连接后可添加 AI，一起飞向终点。" :
+    !state.botAvailable ? "服务器暂未提供机器人，仍可与朋友游玩。" :
+    running ? "本局 AI 已确定，下局可调整数量。" :
+    botLimit === 0 ? "真人已占满 8 个位置，本局无法添加 AI。" :
+    `当前可添加 ${botLimit} 只 AI；相同状态下，AI 可能重叠飞行。`;
   element("start-button").disabled = !mayStart;
   element("start-button").textContent = startPending ? "正在开局…" : finished ? "再飞一局 ↗" : "开始这场飞行 ↗";
   element("jump-button").disabled = !canJump(state);
@@ -240,7 +260,9 @@ function connect() {
 
 function startGame() {
   if (!state.connected || state.phase === "running" || startPending || skinPending) return;
-  startPending = connection.send({ type: "game_begin", speed: Number(element("difficulty").value) });
+  try {
+    startPending = connection.send(gameBeginMessage(state, Number(element("difficulty").value), Number(element("bot-count").value)));
+  } catch (error) { notice(error.message, true); }
   updateUI();
 }
 

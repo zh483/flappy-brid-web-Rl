@@ -39,6 +39,12 @@ export function parseServerMessage(text) {
   if (message.type === "connected" && !isSlot(message.client_id)) {
     throw new Error("服务器分配了无效的玩家编号。");
   }
+  if (message.type === "lobby" &&
+      (!Number.isInteger(message.player_count) || message.player_count < 1 || message.player_count > 8 ||
+       typeof message.bot_available !== "boolean" || !Number.isInteger(message.default_bots) ||
+       message.default_bots < 0 || message.default_bots > 7)) {
+    throw new Error("大厅的玩家数量或机器人状态无效。");
+  }
   if (message.type === "game_started" &&
       (!isSlot(message.client_id) || !isSlot(message.bird_id))) {
     throw new Error("开始消息中的玩家编号或鸟编号无效。");
@@ -55,7 +61,8 @@ export function parseServerMessage(text) {
     const birdFields = ["position_x", "position_y", "velocity_x", "velocity_y",
       "respawn_ms", "invincible_ms", "character"];
     if (!message.birds.every((bird, index) => finiteFields(bird, birdFields) &&
-        bird.bird_id === index && typeof bird.present === "boolean") ||
+        bird.bird_id === index && typeof bird.present === "boolean" &&
+        (bird.is_bot === undefined || typeof bird.is_bot === "boolean")) ||
         !message.pipes.every((pipe) => finiteFields(pipe, ["x", "up", "down"]))) {
       throw new Error("小鸟或管道的数据不完整。");
     }
@@ -64,7 +71,20 @@ export function parseServerMessage(text) {
 }
 
 export function createInitialState() {
-  return { connected: false, clientId: null, birdId: null, phase: "idle", snapshot: null };
+  return { connected: false, clientId: null, birdId: null, phase: "idle", snapshot: null,
+    playerCount: null, botAvailable: false, defaultBots: 0 };
+}
+
+export function botCapacity(state) {
+  return state.connected && state.botAvailable && Number.isInteger(state.playerCount)
+    ? Math.max(0, 8 - state.playerCount) : 0;
+}
+
+export function gameBeginMessage(state, speed, bots) {
+  if (!state.connected || state.phase === "running") throw new Error("请在连接后、开局前设置机器人。");
+  if (!Number.isInteger(bots) || bots < 0 || bots > botCapacity(state))
+    throw new Error("机器人数量超过当前可用空位。");
+  return { type: "game_begin", speed, bots };
 }
 
 // 返回新状态，不修改旧对象，方便单独测试，也方便你观察每条消息的影响。
@@ -74,6 +94,9 @@ export function applyServerMessage(state, message) {
       return { ...createInitialState(), connected: true, clientId: message.client_id };
     case "game_started":
       return { ...state, birdId: message.bird_id, phase: "running", snapshot: null };
+    case "lobby":
+      return { ...state, playerCount: message.player_count, botAvailable: message.bot_available,
+        defaultBots: message.default_bots };
     case "game_state":
       // 同一局丢弃过时状态；game_started 已经清空了上一局的 snapshot。
       if (state.snapshot && message.tick < state.snapshot.tick) return state;

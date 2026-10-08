@@ -30,7 +30,7 @@
           <h1 id="page-title">同一片天空，<span>一起向前。</span></h1>
           <p class="intro-description">叫上朋友，选一只小鸟。穿过管道，把这段飞行变成你们的故事。</p>
         </div>
-        <div class="intro-note"><span class="note-star">✳</span><div>最多 8 人同场<small>40,000 的终点，等你抵达</small></div></div>
+        <div class="intro-note"><span class="note-star">✳</span><div>真人与 AI 最多 8 只鸟<small>40,000 的终点，等你抵达</small></div></div>
       </section>
 
       <div class="notice" id="notice" role="status" aria-live="polite" hidden></div>
@@ -85,6 +85,8 @@
           <section class="control-card launch-card">
             <div class="card-title"><h2><span class="step-number">03</span> 一起起飞</h2><span aria-hidden="true">✳</span></div>
             <div class="difficulty-row"><label for="difficulty">初始难度</label><select id="difficulty"><option value="1">轻松飞 · 1</option><option value="2">加点速 · 2</option><option value="4">挑战一下 · 4</option></select></div>
+            <div class="difficulty-row"><label for="bot-count">AI 机器人</label><select id="bot-count" aria-describedby="bot-help" disabled><option value="0">不添加</option><option value="1">1 只</option><option value="2">2 只</option><option value="3">3 只</option><option value="4">4 只</option><option value="5">5 只</option><option value="6">6 只</option><option value="7">7 只</option></select></div>
+            <p class="field-help" id="bot-help">连接后可添加 AI，一起飞向终点。</p>
             <button class="button button-start" id="start-button" type="button" disabled>开始这场飞行 <span aria-hidden="true">↗</span></button>
             <p class="field-help">朋友都连接好后再开局。开始后将暂时关闭加入入口。</p>
           </section>

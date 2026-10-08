@@ -16,6 +16,16 @@ class BotServerTest(unittest.TestCase):
     connect = helpers.ServerTest.connect
     wait_for = helpers.ServerTest.wait_for
 
+    def test_lobby_tracks_human_capacity(self):
+        lobby = self.wait_for(self.first, "lobby")
+        self.assertEqual(lobby["player_count"], 1)
+        self.assertTrue(lobby["bot_available"])
+        other, _ = self.connect()
+        self.assertEqual(self.wait_for(self.first, "lobby")["player_count"], 2)
+        self.assertEqual(self.wait_for(other, "lobby")["player_count"], 2)
+        other.close()
+        self.assertEqual(self.wait_for(self.first, "lobby")["player_count"], 1)
+
     def test_one_bot_and_human_have_separate_birds(self):
         self.first.send({"type": "game_begin", "speed": 1})
         started = self.wait_for(self.first, "game_started")
@@ -95,6 +105,24 @@ class BotServerTest(unittest.TestCase):
                                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(b"physics mismatch: force", result.stderr)
+
+
+class UnavailableBotTest(unittest.TestCase):
+    server_args = ["--model", "missing-test-model.onnx"]
+    setUp = helpers.ServerTest.setUp
+    stop_server = helpers.ServerTest.stop_server
+    connect = helpers.ServerTest.connect
+    wait_for = helpers.ServerTest.wait_for
+
+    def test_missing_model_disables_bots_but_allows_humans(self):
+        lobby = self.wait_for(self.first, "lobby")
+        self.assertFalse(lobby["bot_available"])
+        self.first.send({"type": "game_begin", "speed": 1, "bots": 1})
+        self.wait_for(self.first, "error")
+        self.first.send({"type": "game_begin", "speed": 1, "bots": 0})
+        self.wait_for(self.first, "game_started")
+        state = self.wait_for(self.first, "game_state")
+        self.assertEqual(state["bot_count"], 0)
 
 
 if __name__ == "__main__":

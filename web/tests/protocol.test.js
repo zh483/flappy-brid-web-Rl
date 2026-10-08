@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyServerMessage, canJump, createInitialState, normalizeServerUrl, ownBird, parseServerMessage } from "../js/protocol.js";
+import { applyServerMessage, botCapacity, canJump, createInitialState, gameBeginMessage, normalizeServerUrl, ownBird, parseServerMessage } from "../js/protocol.js";
 import { birdScreenY, cameraXFor } from "../js/config.js";
 import { interpolateBird } from "../js/renderer.js";
 
@@ -68,4 +68,33 @@ test("正常状态之间插值，死亡与复活位置直接切换", () => {
   const dead = { ...start, respawn_ms: 5000 };
   assert.equal(interpolateBird(dead, end, .5), end);
   assert.equal(interpolateBird(start, dead, .5), dead);
+});
+
+test("机器人选项随在线真人数量限制，开局消息携带选择", () => {
+  let state = applyServerMessage(createInitialState(), { type: "connected", client_id: 0 });
+  const lobby = { type: "lobby", player_count: 2, bot_available: true, default_bots: 1 };
+  parseServerMessage(JSON.stringify(lobby));
+  state = applyServerMessage(state, lobby);
+  assert.equal(botCapacity(state), 6);
+  assert.deepEqual(gameBeginMessage(state, 1, 6), { type: "game_begin", speed: 1, bots: 6 });
+  assert.throws(() => gameBeginMessage(state, 1, 7));
+  assert.throws(() => gameBeginMessage(state, 1, -1));
+  assert.equal(botCapacity({ ...state, playerCount: 8 }), 0);
+  assert.equal(botCapacity({ ...state, botAvailable: false }), 0);
+  assert.throws(() => gameBeginMessage({ ...state, phase: "running" }, 1, 1));
+  for (const player_count of [0, 9, 1.5, "2"]) {
+    assert.throws(() => parseServerMessage(JSON.stringify({ ...lobby, player_count })));
+  }
+});
+
+test("AI 标记保留在画面状态中，自己的鸟仍由服务器分配", () => {
+  const message = snapshot();
+  message.birds[7].present = true;
+  message.birds[7].is_bot = true;
+  const parsed = parseServerMessage(JSON.stringify(message));
+  const state = applyServerMessage(createInitialState(), parsed);
+  assert.equal(state.snapshot.birds[7].is_bot, true);
+  assert.equal(ownBird(state).bird_id, 3);
+  message.birds[7].is_bot = "true";
+  assert.throws(() => parseServerMessage(JSON.stringify(message)));
 });

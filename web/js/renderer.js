@@ -191,6 +191,9 @@ export class GameRenderer {
     if (isOwn && !preview) {
       ctx.fillStyle = "#35523a"; ctx.font = "bold 8px sans-serif"; ctx.textAlign = "center";
       ctx.fillText("YOU", x + 12.5, y - 10);
+    } else if (bird.is_bot && !preview) {
+      ctx.fillStyle = "#35523a"; ctx.font = "bold 8px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("AI", x + 12.5, y - 10);
     }
   }
 

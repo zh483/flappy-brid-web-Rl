@@ -8,6 +8,7 @@
 
 - Crow 1.3.4：`third_party/crow/include/crow.h`。
 - Asio 1.38.2：`third_party/asio/include/asio.hpp`。
+- ONNX Runtime CPU 1.23.2：`third_party/onnxruntime`，用于 PPO 机器人。
 
 源码来自各项目官方 GitHub 仓库，原始许可证保留在源码目录中。
 固定版本、下载地址和 SHA-256 记录在 `third_party/dependencies.json`。
@@ -30,6 +31,9 @@ chcp 65001
 ```
 
 也可以传入端口，例如 `flappy_server.exe 18081`。
+可选参数：`--bots 3` 设置默认机器人数量；`--model 路径.onnx` 指定部署模型。
+默认从程序旁的 `models/ppo-bird.onnx` 加载模型，CMake 构建后会复制模型、元数据和 ONNX Runtime 动态库。
+运行程序时要保留这些文件，不能只复制 exe。缺失或物理参数不兼容的模型会禁用 AI；显式指定 `--bots` 大于 0 时则拒绝启动。
 客户端连接 `ws://localhost:18080/ws`。当前没有注册 HTTP 首页，
 在地址栏访问 `/` 返回 404 是预期行为。
 
@@ -43,6 +47,7 @@ chcp 65001
 ```json
 {"type":"select_skin","skin":2}
 {"type":"game_begin","speed":1}
+{"type":"game_begin","speed":1,"bots":3}
 {"type":"jump"}
 {"type":"client_error","error":"客户端诊断信息"}
 ```
@@ -51,12 +56,14 @@ chcp 65001
 跳跃只记录到待处理数组，下一次固定更新消费一次。
 多个跳跃在同一个更新时间间隔内到达时会合并为一次。
 当前允许任意已连接玩家开始游戏，运行期间不能加入新玩家、修改皮肤或重开。
+`bots` 可选，范围 0–7；省略时使用启动默认值。真人与机器人合计最多 8 只鸟。
 皮肤编号目前允许非负整数，实际可用皮肤的上限需与网页资源约定。
 
 服务器发送的消息包括：
 
 ```json
 {"type":"connected","client_id":0}
+{"type":"lobby","player_count":1,"bot_available":true,"default_bots":0}
 {"type":"skin_selected","skin_id":2}
 {"type":"game_started","client_id":0,"bird_id":1,"skin_id":2,"speed":1}
 {"type":"error","message":"游戏已经开始"}
@@ -67,6 +74,7 @@ chcp 65001
 `client_id`、`bird_id`。`birds` 始终保留 8 个槽位，每项含 `bird_id`、
 `present`、`character`、`position_x/y`、`velocity_x/y`、`respawn_ms`、
 `invincible_ms`。用 `present` 判断槽位是否有人，不能把空槽位从数组移除。
+每只鸟另有布尔字段 `is_bot`，状态含活动机器人数 `bot_count`。大厅人数在真人连接、离开时广播。
 
 计时器每隔约 5 毫秒检查时间，实际引擎步长取 `config::v_fps`（当前 1/24 秒）。
 用单调时钟累计真实经过时间，每次回调最多补 8 步，剩余时间保留。
@@ -94,6 +102,8 @@ python saver/tests/test_server.py saver/build/Release/flappy_server.exe
 测试在独立端口启动临时服务器，验证人数上限、编号复用、JSON 错误处理、
 多人状态和皮肤映射、跳跃、断线清理、新局重置以及极高难度不能绕过速度上限。
 终点冻结由引擎的 Python 测试通过正常操作跑完整关卡来验证。
+机器人额外检查 C++ 与原 PPO 模型的动作一致性、1/2/7/8 只鸟的完整通关、混合容量、身份隔离、断线清理和模型参数校验。
+模型来源、导出方法、各阶段验证与回退方式见 [机器人接入记录](BOTS.md)。
 
 服务器源码可使用：
 
