@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         require(empty[3] == 1 && empty[4] == 0 && empty[5] == 1 && empty[7] == 0, "Wrong missing-pipe observation");
         const int count = std::stoi(argv[3]);
         require(count >= 1 && count <= 8, "Bot count out of range");
-        for (unsigned int seed : {483679114u, 1646945053u, 42u}) {
+        for (unsigned int seed : {0u, 483679114u, 1646945053u, 42u}) {
             game_set settings{};
             settings._size = count; settings._speed = 1;
             const auto ids = engine::begin(settings, seed);

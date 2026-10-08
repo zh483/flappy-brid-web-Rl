@@ -37,6 +37,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
             "${CMAKE_CURRENT_SOURCE_DIR}/models/ppo-bird.onnx"
             "${CMAKE_CURRENT_SOURCE_DIR}/models/policy-cases.json" 1)
         set_tests_properties(bot_single PROPERTIES TIMEOUT 60)
+        foreach(bot_count IN ITEMS 2 7 8)
+            add_test(NAME bot_multiple_${bot_count} COMMAND test_bot
+                "${CMAKE_CURRENT_SOURCE_DIR}/models/ppo-bird.onnx"
+                "${CMAKE_CURRENT_SOURCE_DIR}/models/policy-cases.json" ${bot_count})
+            set_tests_properties(bot_multiple_${bot_count} PROPERTIES TIMEOUT 60)
+        endforeach()
         find_package(Python3 3.9 COMPONENTS Interpreter QUIET)
         if(Python3_Interpreter_FOUND)
             add_test(NAME server_websocket

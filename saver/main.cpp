@@ -187,7 +187,12 @@ void handle_game_begin(server_state& server,
         return;
 
     game_set settings{};
-    const int bots = server.configured_bots;
+    int bots = server.configured_bots;
+    if (data.has("bots") && !read_integer(conn, data, "bots", 0, bots)) return;
+    if (bots > 7) {
+        send_error(conn, "机器人数量必须在 0 到 7 之间");
+        return;
+    }
     if (server.client_numb + bots > 8) {
         send_error(conn, "真人与机器人合计不能超过 8 只鸟");
         return;
@@ -228,6 +233,7 @@ void handle_game_begin(server_state& server,
         message["bird_id"]=info.bird_id;
         message["skin_id"]=info.skin;
         message["speed"]=speed;
+        message["bot_count"] = bots;
         conn->send_text(message.dump());
     }
     CROW_LOG_INFO << "游戏开始，玩家数: " << settings._size;
@@ -357,6 +363,7 @@ void broadcast_state(const server_state& server, const game_state& state) {
     message["speed"] = state.speed;
     message["pipes"] = pipes_to_json(state.pipes);
     message["birds"] = birds_to_json(state.birds);
+    message["bot_count"] = static_cast<int>(std::count(server.bot_birds.begin(), server.bot_birds.end(), true));
     for (unsigned i = 0; i < 8; ++i)
         message["birds"][i]["is_bot"] = server.bot_birds[i];
 
@@ -440,13 +447,13 @@ int main(int argc, char* argv[]) {
         if (option == "--model" && index + 1 < argc) { model = argv[++index]; continue; }
         const bool bot_option = option == "--bots";
         if ((bot_option && index + 1 == argc) || (!bot_option && port_given)) {
-            std::cerr << "Usage: flappy_server [port] [--bots 0..1] [--model path]\n"; return 1;
+            std::cerr << "Usage: flappy_server [port] [--bots 0..7] [--model path]\n"; return 1;
         }
         const std::string text = bot_option ? argv[++index] : option;
         int value = 0;
         const auto parsed = std::from_chars(text.data(), text.data() + text.size(), value);
         if (parsed.ec != std::errc{} || parsed.ptr != text.data() + text.size() ||
-            value < (bot_option ? 0 : 1) || value > (bot_option ? 1 : 65535)) {
+            value < (bot_option ? 0 : 1) || value > (bot_option ? 7 : 65535)) {
             std::cerr << "Invalid port or bot count\n"; return 1;
         }
         if (bot_option) bots = value;
