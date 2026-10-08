@@ -1,5 +1,7 @@
 # flappy-bird-web-Rl
 
+![天才程序员养成中：用户与 GPT 协作开发联机 Flappy Bird 的六格漫画](docs/images/genius-programmer-comic.png)
+
 Flappy Bird 联机项目：C++ 游戏引擎、Crow WebSocket 服务器和网页前端，
 以及供 Python 强化学习训练使用的 pybind11 接口。
 
