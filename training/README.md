@@ -62,7 +62,9 @@ Windows 构建需要 Visual Studio 2022 的 C++ 桌面开发工具。构建脚�
 
 模型与配置文件请一起保存。输出位于 `runs/`，已被 Git 忽略。
 
-SB3 的 `.zip` 通过 Python/PyTorch 加载。将来要在 C++ 服务器里推理，需要另做模型导出与推理接线，并保持相同的 8 维观测顺序；当前训练入口没有改动服务器。
+SB3 的 `.zip` 通过 Python/PyTorch 加载；C++ 服务器使用导出的 ONNX 策略，并保持相同的 8 维观测顺序。训练入口与服务器运行相互独立。
+
+现已提供独立的 ONNX 导出入口与 C++ 机器人接入：安装 `training/requirements-export.txt` 后运行 `python -m training.export_policy 模型.zip`，默认导出到 `saver/models/ppo-bird.onnx`。导出检查 512 组确定性动作与原 SB3 一致，并保存训练物理参数供服务器启动校验。修改模型后重新构建服务器，以更新程序旁的模型副本；接入细节见 [机器人说明](../saver/BOTS.md)。
 
 评估固定种子的 20 局，输出 JSON 报告：
 

@@ -17,6 +17,7 @@ Flappy Bird 联机项目：C++ 游戏引擎、Crow WebSocket 服务器和网页�
 - **网页前端**：由 **Codex 实现**，包括页面样式、WebSocket 客户端、Canvas 绘图和交互。
 - **工程辅助**：Codex 协助完成 CMake 配置、pybind11 绑定、测试、代码检查与参数调整。
 - **Python 强化学习训练**：Codex 实现 Gymnasium 环境封装，以及调用 Stable-Baselines3 PPO 的训练、评估、保存和续训流程。
+- **PPO 机器人接入**：Codex 实现 ONNX 导出、C++ 推理、机器人槽位管理、网页选择与验证。
 
 ## 目录
 
@@ -27,7 +28,8 @@ Flappy Bird 联机项目：C++ 游戏引擎、Crow WebSocket 服务器和网页�
 
 构建与调用方法见 [引擎说明](engine-c/README.md)、[服务器说明](saver/README.md)、[网页说明](web/README.md) 和 [训练说明](training/README.md)。
 服务器已实现玩家连接管理、皮肤选择、固定步长更新和状态广播。
-网页已支持连接、选皮肤、开局、跳跃、多人状态、复活提示和终点进度。Python 已支持 PPO 训练流程，模型效果仍需正式训练与评估。
+网页已支持连接、选皮肤、开局、跳跃、多人状态、复活提示和终点进度，也可在开局前选择 0–7 只 PPO 机器人。真人与 AI 合计最多 8 只鸟。
+Python 已支持 PPO 训练与评估；服务器使用导出的最佳模型在 CPU 上推理，无需运行 Python。接入验证与回退说明见 [机器人接入记录](saver/BOTS.md)。
 
 构建产物、虚拟环境、前端依赖和训练输出由 `.gitignore` 排除。
 

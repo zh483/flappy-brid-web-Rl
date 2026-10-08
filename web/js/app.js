@@ -99,6 +99,7 @@ function handleMessage(message) {
       renderer.reset();
       startPending = false;
       skinPending = false;
+      element("bot-count").value = String(message.bot_count ?? 0);
       selectedSkin = getSkin(message.skin_id).id;
       confirmedSkin = selectedSkin;
       notice();

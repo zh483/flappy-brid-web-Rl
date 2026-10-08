@@ -49,6 +49,10 @@ export function parseServerMessage(text) {
       (!isSlot(message.client_id) || !isSlot(message.bird_id))) {
     throw new Error("开始消息中的玩家编号或鸟编号无效。");
   }
+  if (["game_started", "game_state"].includes(message.type) && message.bot_count !== undefined &&
+      (!Number.isInteger(message.bot_count) || message.bot_count < 0 || message.bot_count > 7)) {
+    throw new Error("服务器的机器人数量无效。");
+  }
   if (message.type === "game_state") {
     if (!Number.isSafeInteger(message.tick) || message.tick < 0 ||
         !["idle", "running", "finished"].includes(message.phase) ||

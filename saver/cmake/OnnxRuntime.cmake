@@ -32,19 +32,31 @@ else()
 endif()
 
 function(flappy_deploy_bot target)
-    add_custom_command(TARGET ${target} POST_BUILD
+    # Both executables share an output directory. One task avoids parallel copy races
+    # and refreshes exported models even when no executable needs relinking.
+    if(NOT TARGET flappy_bot_assets)
+    add_custom_target(flappy_bot_assets
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<TARGET_FILE:flappy_onnxruntime>" "$<TARGET_FILE_DIR:${target}>"
         COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/models"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${target}>/licenses/onnxruntime"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${FLAPPY_ONNXRUNTIME_DIR}/LICENSE"
+            "${FLAPPY_ONNXRUNTIME_DIR}/ThirdPartyNotices.txt"
+            "$<TARGET_FILE_DIR:${target}>/licenses/onnxruntime"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${CMAKE_CURRENT_SOURCE_DIR}/models/ppo-bird.onnx"
             "${CMAKE_CURRENT_SOURCE_DIR}/models/ppo-bird.json"
             "$<TARGET_FILE_DIR:${target}>/models")
     if(NOT WIN32)
         # The ELF SONAME omits the patch version.
-        add_custom_command(TARGET ${target} POST_BUILD
+        add_custom_command(TARGET flappy_bot_assets POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "$<TARGET_FILE:flappy_onnxruntime>" "$<TARGET_FILE_DIR:${target}>/libonnxruntime.so.1")
+    endif()
+    endif()
+    add_dependencies(${target} flappy_bot_assets)
+    if(NOT WIN32)
         set_target_properties(${target} PROPERTIES BUILD_RPATH "$ORIGIN" INSTALL_RPATH "$ORIGIN")
     endif()
 endfunction()

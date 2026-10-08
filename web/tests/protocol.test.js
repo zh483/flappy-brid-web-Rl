@@ -98,3 +98,10 @@ test("AI 标记保留在画面状态中，自己的鸟仍由服务器分配", ()
   message.birds[7].is_bot = "true";
   assert.throws(() => parseServerMessage(JSON.stringify(message)));
 });
+
+test("开局消息中的实际机器人数量可同步到其他玩家", () => {
+  const started = { type: "game_started", client_id: 1, bird_id: 0, bot_count: 2 };
+  assert.equal(parseServerMessage(JSON.stringify(started)).bot_count, 2);
+  for (const bot_count of [-1, 8, "2", null])
+    assert.throws(() => parseServerMessage(JSON.stringify({ ...started, bot_count })));
+});
